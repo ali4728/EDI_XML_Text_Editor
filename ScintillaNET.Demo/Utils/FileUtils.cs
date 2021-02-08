@@ -12,6 +12,7 @@ namespace ScintillaNET.Demo.Utils
     {
         public static string CurFileName = "";
         public static long fileSize = 0;
+        public static bool fileHasLineBreaks = false;
         public static int GCTrigger = 0;
         //public static int bytesPerPage = 100000;
         public static string readAllFile(string path)
@@ -29,7 +30,7 @@ namespace ScintillaNET.Demo.Utils
             string str = "";
             if (File.Exists(path))
             {
-                Console.WriteLine(String.Format("SRART read byte size:{0:n0} offset:{1:n0}", limit, offset));
+                Console.WriteLine(String.Format("START read byte limit:{0:n0} offset:{1:n0}", limit, offset));
                 using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read))
                 {
                     
@@ -38,20 +39,58 @@ namespace ScintillaNET.Demo.Utils
                     {
                         limit = (int)fs.Length;
                     }
-                    if (fs.Length < (offset + limit))
+                    //if (fs.Length < (offset + limit))
+                    //{
+                    //    offset = (int)(fs.Length - limit);
+                    //}
+                    if (offset > (fs.Length - limit))
                     {
-                        offset = (int)(fs.Length - limit);
+                        limit = (int)(fs.Length - offset);                     
                     }
 
                     byte[] bytes = new byte[limit];
-                    Console.WriteLine(String.Format("read byte size:{0:n0} offset:{1:n0}", limit, offset));
+                    Console.WriteLine(String.Format("END read byte limit:{0:n0} offset:{1:n0}", limit, offset));
                     fs.Seek(offset, 0);
                     int n = fs.Read(bytes, 0, limit);                    
 
                     if (n > 0)
                     {
                         str = System.Text.Encoding.Default.GetString(bytes);
-                    }                   
+
+                        #region check_if_line_numbers_exist
+                        if (offset == 0) //if reading first junk of file check if file has line numbers
+                        {
+                            string searchString = "\r\n";
+                            int searchCounter = 0;
+                            int maxSearchCounter = 10;
+                            if (!String.IsNullOrEmpty(str))
+                            {
+                                int idx = -1;
+                                int strIdx = 0;
+                                while ((idx = str.IndexOf(searchString, strIdx)) > -1)
+                                {
+                                    if (searchCounter < maxSearchCounter)
+                                    {
+                                        strIdx = idx + 1;                                        
+                                        searchCounter++;
+                                    }
+                                    else
+                                    {
+                                        break;
+                                    }
+
+                                }
+                            }
+
+                            if (searchCounter > 1) //should have at least  two lines
+                            {
+                                FileUtils.fileHasLineBreaks = true;
+                                Console.WriteLine("File has " + searchCounter.ToString() + " linebreaks");
+                            }
+                        }
+                        #endregion
+
+                    }
                 }
             }
 
@@ -156,14 +195,57 @@ namespace ScintillaNET.Demo.Utils
                         
                             if (!String.IsNullOrEmpty(str))
                             {
+                                ////Line numbers
+                                char[] charAry = str.ToCharArray();
+                                Dictionary<int, int> lineDict = new Dictionary<int, int>();
+                                //List<int> lineList = new List<int>();
+                                int lineCounter = 0;
+
+                                for (int i = 0; i < charAry.Length; i++)
+                                {
+
+                                    char achar = charAry[i];
+                                    if (achar == '\n')
+                                    {
+                                        lineCounter++;
+                                        lineDict.Add(i, lineCounter);
+                                        //lineList.Add(i);
+                                    }
+                                }
+
+
+
                                 int idx = -1;
                                 int strIdx = 0;
+                                
                                 while ((idx = str.IndexOf(searchString, strIdx)) > -1)
                                 {
                                     if (searchCounter < maxSearchCounter)
                                     {
+                                        int curLineNumber = -1;
+                                        for (int i = idx; i > 0; i--)
+                                        {
+                                            if (charAry[i] == '\n')
+                                            {
+                                                curLineNumber = i;
+                                                break;
+                                            }
+                                        }
+
                                         strIdx = idx + 1;
-                                        loc.Add((long)(idx + offset), searchString);
+                                        //int closest = lineList.Aggregate((x,y) => Math.Abs(x-idx) < Math.Abs(y-idx) ? x : y);
+                                        //int lineMatch = lineDict[closest];
+                                        int lineMatch = 1;                                  
+
+                                        if (lineDict.ContainsKey(curLineNumber))
+                                        {
+                                            lineMatch = lineDict[curLineNumber] + 1;
+                                        }
+
+
+                                        loc.Add((long)(idx + offset), " Line" + lineMatch.ToString());
+                                        
+                                        //loc.Add((long)(idx + offset), searchString);
                                         searchCounter++;
                                     }
                                     else 

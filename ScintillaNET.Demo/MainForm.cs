@@ -390,7 +390,10 @@ namespace ScintillaNET.Demo {
 			return limit;
 		}
 		private void LoadDataFromFile(string path) {
+			richTextBoxBottom.Text = "";
 			FileUtils.CurFileName = path;
+			FileUtils.fileHasLineBreaks = false;
+
 			if (File.Exists(path)) 
 			{
 				FileInfo fi = new FileInfo(path);
@@ -950,6 +953,7 @@ namespace ScintillaNET.Demo {
 			int tot = TextArea.Lines.Count;
 			if (ln <= tot)
 			{
+                Console.WriteLine("Will Scroll to line " + ln.ToString());
 				var linesOnScreen = TextArea.LinesOnScreen - 2;
 
 				var line = ln;
@@ -957,6 +961,9 @@ namespace ScintillaNET.Demo {
 				var start = TextArea.Lines[line - (linesOnScreen / 2)].Position;
 				var end = TextArea.Lines[line + (linesOnScreen / 2)].Position;
 				TextArea.ScrollRange(start, end);
+
+				string searchString = textBoxSearchFile.Text;
+				HighlightWord(searchString);
 			}
 			else
 			{
@@ -974,12 +981,22 @@ namespace ScintillaNET.Demo {
 			//
             try
             {
-				int loc = Int32.Parse(str);				
-				int page = loc / getLimit();
+				if (str.Contains("Line"))
+				{
+					string lnStr = str.Replace("Line", "");
+					int lnInt = Int32.Parse(lnStr);
+					ScrollToLineNumber(lnInt);
+				}
+				else
+				{
+					int loc = Int32.Parse(str);
+					int page = loc / getLimit();
 
-				Console.WriteLine(String.Format("Double click page:{0:n0} ", page));
+					Console.WriteLine(String.Format("Double click page:{0:n0} ", page));
 
-				buttonJumpToAnyPage(page);
+					buttonJumpToAnyPage(page);
+
+				}
 
 
 			}
